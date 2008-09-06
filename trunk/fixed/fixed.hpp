@@ -1,10 +1,19 @@
-#ifndef FIXED_POINT_HPP
-#define FIXED_POINT_HPP
 
-#include "Types.hpp"
+#ifndef FIXED_FIXED_HPP_INCLUDED
+#define FIXED_FIXED_HPP_INCLUDED
+
+// Copyright Joel Riendeau        2008
+//           Jean-Philippe Gravel 2008
+//           Jean-Olivier Racine  2008
+//
+// Distributed under the New BSD License. 
+// (See accompanying file NewBSDLicense.txt or copy at 
+// http://www.opensource.org/licenses/bsd-license.php)
+
+#include "integer_types.hpp"
 #include "boost\mpl\if.hpp"
 
-template <Sint8 Magnitude, Uint8 Fractional>
+template <sint8_t Magnitude, uint8_t Fractional>
 class Q
 {
 public:
@@ -38,38 +47,38 @@ public:
         return result;
     }
 
-    inline bool operator==(Q val) const {return m_Comp == val.m_Comp;}
-    inline bool operator!=(Q val) const {return m_Comp != val.m_Comp;}
-    inline bool operator< (Q val) const {return m_Comp <  val.m_Comp;}
-    inline bool operator<=(Q val) const {return m_Comp <= val.m_Comp;}
-    inline bool operator> (Q val) const {return m_Comp >  val.m_Comp;}
-    inline bool operator>=(Q val) const {return m_Comp >= val.m_Comp;}
+    inline bool operator==(const Q& val) const {return m_Comp == val.m_Comp;}
+    inline bool operator!=(const Q& val) const {return m_Comp != val.m_Comp;}
+    inline bool operator< (const Q& val) const {return m_Comp <  val.m_Comp;}
+    inline bool operator<=(const Q& val) const {return m_Comp <= val.m_Comp;}
+    inline bool operator> (const Q& val) const {return m_Comp >  val.m_Comp;}
+    inline bool operator>=(const Q& val) const {return m_Comp >= val.m_Comp;}
 
-    inline Q operator+ (Q val) const {Q res; res.m_Comp = m_Comp + val.m_Comp; return res;}
-    inline Q operator+=(Q val)       {m_Comp += val.m_Comp; return *this;}
-    inline Q operator- (Q val) const {Q res; res.m_Comp = m_Comp - val.m_Comp; return res;}
-    inline Q operator-=(Q val)       {m_Comp -= val.m_Comp; return *this;}
-    inline Q operator* (Q val) const
+    inline Q operator+ (const Q& val) const {Q res; res.m_Comp = m_Comp + val.m_Comp; return res;}
+    inline Q operator+=(const Q& val)       {m_Comp += val.m_Comp; return *this;}
+    inline Q operator- (const Q& val) const {Q res; res.m_Comp = m_Comp - val.m_Comp; return res;}
+    inline Q operator-=(const Q& val)       {m_Comp -= val.m_Comp; return *this;}
+    inline Q operator* (const Q& val) const
     {
         Q res;
         res.m_Comp = (static_cast<MultiplyType>(m_Comp) *
                       static_cast<MultiplyType>(val.m_Comp)) >> Fractional;
         return res;
     }
-    inline Q operator*=(Q val)
+    inline Q operator*=(const Q& val)
     {
         m_Comp =  (static_cast<MultiplyType>(m_Comp) *
                    static_cast<MultiplyType>(val.m_Comp)) >> Fractional;
         return *this;
     }
-    inline Q operator/(Q val) const
+    inline Q operator/(const Q& val) const
     {
         Q res;
         if (val.m_Comp == 0) res.m_Comp = ~val.m_Comp;
         res.m_Comp = ((static_cast<MultiplyType>(m_Comp) << Fractional) / val.m_Comp) >> Fractional;
         return res;
     }
-    inline Q operator/=(Q val)
+    inline Q operator/=(const Q& val)
     {
         if (val.m_Comp == 0)
             m_Comp = ~val.m_Comp;
@@ -79,16 +88,16 @@ public:
     }
 
     // A template to select the smallest integer type for a given amount of bits
-    template <Uint8 Bits, bool Signed> struct FixedInteger
+    template <uint8_t Bits, bool Signed> struct FixedInteger
     {
-        typedef typename boost::mpl::if_c<(Bits <= 8 && Signed), Sint8
-              , typename boost::mpl::if_c<(Bits <= 8 && !Signed), Uint8
-              , typename boost::mpl::if_c<(Bits <= 16 && Signed), Sint16
-              , typename boost::mpl::if_c<(Bits <= 16 && !Signed), Uint16
-              , typename boost::mpl::if_c<(Bits <= 32 && Signed), Sint32
-              , typename boost::mpl::if_c<(Bits <= 32 && !Signed), Uint32
-              , typename boost::mpl::if_c<(Bits <= 64 && Signed), Sint64
-              , typename boost::mpl::if_c<(Bits <= 64 && !Signed), Uint64
+        typedef typename boost::mpl::if_c<(Bits <= 8 && Signed),   sint8_t
+              , typename boost::mpl::if_c<(Bits <= 8 && !Signed),  uint8_t
+              , typename boost::mpl::if_c<(Bits <= 16 && Signed),  sint16_t
+              , typename boost::mpl::if_c<(Bits <= 16 && !Signed), uint16_t
+              , typename boost::mpl::if_c<(Bits <= 32 && Signed),  sint32_t
+              , typename boost::mpl::if_c<(Bits <= 32 && !Signed), uint32_t
+              , typename boost::mpl::if_c<(Bits <= 64 && Signed),  sint64_t
+              , typename boost::mpl::if_c<(Bits <= 64 && !Signed), uint64_t
               , void>::type >::type >::type >::type >::type >::type >::type >::type type;
     };
 
@@ -120,15 +129,15 @@ private:
     {
         struct
         {
-            Uint32 mantissa : 23;
-            Uint32 exponent : 8;
-            Uint32 sign : 1;
+            uint32_t mantissa : 23;
+            uint32_t exponent : 8;
+            uint32_t sign : 1;
         };
-        Uint32 full;
+        uint32_t full;
     } FloatFormat;
 };
 
-template <Sint8 Magnitude, Uint8 Fractional>
+template <sint8_t Magnitude, uint8_t Fractional>
 inline Q<Magnitude, Fractional> sqrt(const Q<Magnitude, Fractional>& val)
 {
     //if (Magnitude < 0)
@@ -146,7 +155,7 @@ inline Q<Magnitude, Fractional> sqrt(const Q<Magnitude, Fractional>& val)
     return root >> 1;
 }
 
-template <Sint8 Magnitude, Uint8 Fractional>
+template <sint8_t Magnitude, uint8_t Fractional>
 inline Q<Magnitude, Fractional> floor(const Q<Magnitude, Fractional>& val)
 {
     Q<Magnitude, Fractional> ret = val;
@@ -154,7 +163,7 @@ inline Q<Magnitude, Fractional> floor(const Q<Magnitude, Fractional>& val)
     return ret;
 }
 
-template <Sint8 Magnitude, Uint8 Fractional>
+template <sint8_t Magnitude, uint8_t Fractional>
 inline Q<Magnitude, Fractional> ceil(const Q<Magnitude, Fractional>& val)
 {
     Q<Magnitude, Fractional> ret = val;
