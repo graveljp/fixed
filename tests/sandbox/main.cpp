@@ -12,10 +12,14 @@
 int main(int argc, char* argv[])
 {
     Q<16,16> a, b, c;
-    a = 45.045f;
-    b = 33.2334f;
+    Q<10,10> d;
+    a = 45.125f;
+    d = 45.125f;
+    bool eq = (a == d);
 
-    c = a * b;
+    unsigned int x = 0xf0001234;
+    unsigned short y = 0x1234;
+    bool t = (y == (unsigned short)x);
 
     float res = c;
 

@@ -2,9 +2,9 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9.00"
-	Name="fixed"
-	ProjectGUID="{FFB25F08-8280-4913-95D3-8B262623F23C}"
-	RootNamespace="fixed"
+	Name="sandbox"
+	ProjectGUID="{273C476D-B32E-4EB4-82AA-7915AE40D1F6}"
+	RootNamespace="sandbox"
 	Keyword="Win32Proj"
 	TargetFrameworkVersion="196613"
 	>
@@ -41,7 +41,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\fixed"
+				AdditionalIncludeDirectories="..\..\fixed"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -172,7 +172,7 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath="..\tests\sandbox\main.cpp"
+				RelativePath=".\main.cpp"
 				>
 			</File>
 		</Filter>
@@ -182,11 +182,11 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath="..\fixed\fixed.hpp"
+				RelativePath="..\..\fixed\fixed.hpp"
 				>
 			</File>
 			<File
-				RelativePath="..\fixed\integer_types.hpp"
+				RelativePath="..\..\fixed\integer_types.hpp"
 				>
 			</File>
 		</Filter>
