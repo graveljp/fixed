@@ -12,10 +12,10 @@ endif(WIN32)
 set(SRCS ${MainSrcs} ${OSSrcs})
 set(INCS ${MainIncs} ${OSIncs})
 
-add_library(unittest++ ${SRCS} ${INCS})
+add_library(UnitTest++ ${SRCS} ${INCS})
 
-include_directories(UnitTest++/src ${fixed_SOURCE_DIR}/fixed)
+include_directories(../../../externals/UnitTest++/src ${fixed_SOURCE_DIR}/fixed)
 
 set(SRCS comparison.cpp construction.cpp main.cpp)
-add_executable(unittests ${SRCS})
-target_link_libraries(unittests unittest++)
+add_executable(unit_tests ${SRCS})
+target_link_libraries(unit_tests UnitTest++)
