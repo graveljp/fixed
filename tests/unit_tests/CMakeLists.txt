@@ -1,12 +1,12 @@
-file(GLOB MainSrcs UnitTest++/src/*.cpp)
-file(GLOB MainIncs UnitTest++/src/*.h)
+file(GLOB MainSrcs ../../../externals/UnitTest++/src/*.cpp)
+file(GLOB MainIncs ../../../externals/UnitTest++/src/*.h)
 
 if(WIN32)
-	file(GLOB OSSrcs UnitTest++/src/Win32/*.cpp)
-	file(GLOB OSIncs UnitTest++/src/Win32/*.h)
+	file(GLOB OSSrcs ../../../externals/UnitTest++/src/Win32/*.cpp)
+	file(GLOB OSIncs ../../../externals/UnitTest++/src/Win32/*.h)
 else(WIN32)
-	file(GLOB OSSrcs UnitTest++/src/Posix/*.cpp)
-	file(GLOB OSIncs UnitTest++/src/Posix/*.h)
+	file(GLOB OSSrcs ../../../externals/UnitTest++/src/Posix/*.cpp)
+	file(GLOB OSIncs ../../../externals/UnitTest++/src/Posix/*.h)
 endif(WIN32)
 
 set(SRCS ${MainSrcs} ${OSSrcs})
