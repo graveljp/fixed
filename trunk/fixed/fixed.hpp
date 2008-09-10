@@ -12,33 +12,80 @@
 
 #include "integer_types.hpp"
 #include "boost\mpl\if.hpp"
+#include "boost\utility\enable_if.hpp"
+#include "boost\type_traits\is_integral.hpp"
+#include "boost\type_traits\is_float.hpp"
+#include "boost\type_traits\is_same.hpp"
+#include "boost\assert.hpp"
+
+// A template to select the smallest integer type for a given amount of bits
+template <uint8_t Bits, bool Signed> struct FixedInteger
+{
+    typedef typename boost::mpl::if_c<(Bits <= 8 && Signed),   sint8_t
+          , typename boost::mpl::if_c<(Bits <= 8 && !Signed),  uint8_t
+          , typename boost::mpl::if_c<(Bits <= 16 && Signed),  sint16_t
+          , typename boost::mpl::if_c<(Bits <= 16 && !Signed), uint16_t
+          , typename boost::mpl::if_c<(Bits <= 32 && Signed),  sint32_t
+          , typename boost::mpl::if_c<(Bits <= 32 && !Signed), uint32_t
+          , typename boost::mpl::if_c<(Bits <= 64 && Signed),  sint64_t
+          , typename boost::mpl::if_c<(Bits <= 64 && !Signed), uint64_t
+          , void>::type >::type >::type >::type >::type >::type >::type >::type type;
+};
+
+template<uint8_t Bits> struct BitMask
+{
+    typedef typename FixedInteger<Bits, false>::type type;
+    static const type value = static_cast<type>(-1) >> (sizeof(type)*8-Bits);
+};
+
 
 template <sint8_t Magnitude, uint8_t Fractional>
 class Q
 {
 public:
-    Q() : m_Comp(0) {}
+    enum
+    {
+        NBits = (Magnitude < 0 ? -Magnitude : Magnitude) + Fractional,
+        NBits_Magn = (Magnitude < 0 ? -Magnitude : Magnitude),
+        NBits_Frac = Fractional
+    };
+
+    typedef Q<Magnitude, Fractional> this_type;
+    typedef typename FixedInteger<NBits,   (Magnitude < 0)>::type MagnType;
+    typedef typename FixedInteger<NBits,   false>::type           FracType;
+    typedef typename FixedInteger<NBits*2, (Magnitude < 0)>::type MultiplyType;
+    typedef typename FixedInteger<(NBits > sizeof(float) ? NBits : sizeof(float)), false>::type FloatCastType;
+
+    Q()                   : m_Comp(0) {}
+    Q(const Q& val)       : m_Comp(val.m_Comp) {}
+
+    template <typename T>
+    Q(const T& val, typename boost::enable_if<boost::is_integral<T>, int>::type dummy = 0)
+    {
+        m_Magn = static_cast<MagnType>(val);
+        m_Frac = 0;
+    }
+    
+    template <typename T>
+    Q(const T& val, typename boost::enable_if<boost::is_float<T>, int>::type dummy = 0)
+    {
+        m_Comp = static_cast<MagnType>(val * (1 << Fractional));
+    }
+
     template <sint8_t M, uint8_t F>
-    explicit Q(const Q<M,F>& val)
+    Q(const Q<M,F>& val, typename boost::enable_if_c<(Fractional>F), int>::type dummy = 0)
     {
-        m_Comp = (Fractional > F) ?
-                    static_cast<MagnType>(val.m_Comp << (Fractional - F)) :
-                    static_cast<MagnType>(val.m_Comp >> (F - Fractional)) ;
-    }
-    template <typename T>
-	Q(T val) : m_Magn(static_cast<MagnType>(val)), m_Frac(0) {}
-
-	Q(float val)
-    {
-        m_Comp = static_cast<MagnType>(val * (1 << Fractional));
+        m_Comp = static_cast<MagnType>(val.m_Comp << (Fractional - F));
     }
 
-	Q(double val)
+    template <sint8_t M, uint8_t F>
+    Q(const Q<M,F>& val, typename boost::enable_if_c<(Fractional<F), int>::type dummy = 0)
     {
-        m_Comp = static_cast<MagnType>(val * (1 << Fractional));
+        m_Comp = static_cast<MagnType>(val.m_Comp >> (F - Fractional));
     }
 
-    template <typename T>
+
+    template<typename T>
     operator T() const
     {
         return static_cast<T>(m_Magn);
@@ -82,44 +129,23 @@ public:
     Q operator/(const Q& val) const
     {
         Q res;
-        if (val.m_Comp == 0) res.m_Comp = ~val.m_Comp;
-        res.m_Comp = ((static_cast<MultiplyType>(m_Comp) << Fractional) / val.m_Comp) >> Fractional;
+        BOOST_ASSERT(val.m_Comp != 0);
+        if (val.m_Comp == 0)
+            res.m_Comp = BitMask<NBits>::value;
+        else
+            res.m_Comp = ((static_cast<MultiplyType>(m_Comp) << Fractional) / val.m_Comp) >> Fractional;
         return res;
     }
     Q operator/=(const Q& val)
     {
+        BOOST_ASSERT(val.m_Comp != 0);
         if (val.m_Comp == 0)
-            m_Comp = ~val.m_Comp;
+            m_Comp = BitMask<NBits>::value;
         else
             m_Comp = ((static_cast<MultiplyType>(m_Comp) << Fractional) / val.m_Comp) >> Fractional;
         return *this;
     }
 
-    // A template to select the smallest integer type for a given amount of bits
-    template <uint8_t Bits, bool Signed> struct FixedInteger
-    {
-        typedef typename boost::mpl::if_c<(Bits <= 8 && Signed),   sint8_t
-              , typename boost::mpl::if_c<(Bits <= 8 && !Signed),  uint8_t
-              , typename boost::mpl::if_c<(Bits <= 16 && Signed),  sint16_t
-              , typename boost::mpl::if_c<(Bits <= 16 && !Signed), uint16_t
-              , typename boost::mpl::if_c<(Bits <= 32 && Signed),  sint32_t
-              , typename boost::mpl::if_c<(Bits <= 32 && !Signed), uint32_t
-              , typename boost::mpl::if_c<(Bits <= 64 && Signed),  sint64_t
-              , typename boost::mpl::if_c<(Bits <= 64 && !Signed), uint64_t
-              , void>::type >::type >::type >::type >::type >::type >::type >::type type;
-    };
-
-    enum
-    {
-        NBits = (Magnitude < 0 ? -Magnitude : Magnitude) + Fractional,
-        NBits_Magn = (Magnitude < 0 ? -Magnitude : Magnitude),
-        NBits_Frac = Fractional
-    };
-
-    typedef typename FixedInteger<NBits,   (Magnitude < 0)>::type MagnType;
-    typedef typename FixedInteger<NBits,   false>::type           FracType;
-    typedef typename FixedInteger<NBits*2, (Magnitude < 0)>::type MultiplyType;
-    typedef typename FixedInteger<(NBits > sizeof(float) ? NBits : sizeof(float)), false>::type FloatCastType;
 
     FracType Frac() {return m_Frac;}
 
@@ -183,12 +209,12 @@ Q<Magnitude, Fractional> ceil(const Q<Magnitude, Fractional>& val)
 }
 
     /*
-	fixed pow(fixed fixedPower);
-	fixed log10(void);
-	fixed log(void);
-	fixed exp(void);
-	fixed cos(void);
-	fixed sin(void);
-	fixed tan(void);*/
+    fixed pow(fixed fixedPower);
+    fixed log10(void);
+    fixed log(void);
+    fixed exp(void);
+    fixed cos(void);
+    fixed sin(void);
+    fixed tan(void);*/
 
 #endif
