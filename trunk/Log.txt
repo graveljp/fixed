@@ -1,0 +1,41 @@
+-Namespace the library code under 'fixed'
+
+-Replace template 'FixedInteger' which selects types based on needed
+ amount of bits, to Boost equivalent. JP says there is one.
+
+-Implement cast operators individually, or prove a templated one for
+ all integer types is dangerous in case of casting to objects
+ (danger = obscure compiler error message thrown which doesn't help
+ developers, other scary side-effects)
+
+-Modify all operators to accept template Q<f,g> type -- a Q with
+ different Magnitude and Fractional sizes
+
+-Implement transcendental functions of the standard library
+
+-Explore expression template evaluation of operators and their effects
+ on accuracy for corner cases. a * b * c * d may be best evaluated as
+ (a*b)*(c*d) than (a*(b*(c*d))) for example. Some mathematical proof
+ would be appended to this work.
+
+-Add a template parameter to accumulate options. Options needed for
+ future work are :
+  * CheckedMode (over-flow, under-flow, divide-by-zero
+  * ScientificEvaluationMode
+    (compute the actual accuracy of sub-results based on error
+     accumulation -- amount of significant bits in a result is equal
+     to the least amount of significant bits in operands)
+  * ProfileMode (run all operations on a parallel floating-point type
+                 and evaluate abs. and rel. error, as well as
+                 performance using a precision timer)
+  * ReportMode (should generate a post-run report of profiling, using
+                a yet T.B.D. trick to identify variables -- hard)
+
+-Develop the FiPU concept : actual implementation of arith operations
+ are provided by a template implementing a Fixed-Point Unit (FiPU)
+ interface. A configurable FiPU would be provided out of the box.
+ However, the developer can provide his own to simulate the behavior
+ of particular hardware, if he intends to use his fixed-point
+ algorithms in DSPs or FPGAs later. JP also had an idea : maybe the
+ FiPU would also be responsible for evaluation order and thus would
+ be where the expression template would need to be implemented.
