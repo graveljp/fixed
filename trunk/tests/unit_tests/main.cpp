@@ -1,12 +1,2 @@
-#include "UnitTest++.h"
-#include "stdio.h"
-
-int main(int argc, char const * argv[])
-{
-    int testsFailed = UnitTest::RunAllTests();
-    if (testsFailed != 0)
-    {
-        
-    }
-    return testsFailed;
-}
+#define BOOST_TEST_MAIN
+#include <boost/test/unit_test.hpp>
