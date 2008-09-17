@@ -1,4 +1,4 @@
-SET(INCS fixed.hpp integer_types.hpp)
+SET(INCS fixed.hpp integer_types.hpp promote_traits.hpp QXpr.hpp SimpleFiPU.hpp XprFiPU.hpp)
 
 add_library(fixed ${INCS})
 
