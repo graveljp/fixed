@@ -10,13 +10,17 @@
 // (See accompanying file NewBSDLicense.txt or copy at 
 // http://www.opensource.org/licenses/bsd-license.php)
 
+#define USING_XPR_FIPU 1
+
 #include "integer_types.hpp"
-#include "boost\mpl\if.hpp"
-#include "boost\utility\enable_if.hpp"
-#include "boost\type_traits\is_integral.hpp"
-#include "boost\type_traits\is_float.hpp"
-#include "boost\type_traits\is_same.hpp"
-#include "boost\assert.hpp"
+#include "QXpr.hpp"
+
+#include <boost\mpl\if.hpp>
+#include <boost\utility\enable_if.hpp>
+#include <boost\type_traits\is_integral.hpp>
+#include <boost\type_traits\is_float.hpp>
+#include <boost\type_traits\is_same.hpp>
+#include <boost\assert.hpp>
 
 // A template to select the smallest integer type for a given amount of bits
 template <uint8_t Bits, bool Signed> struct FixedInteger
@@ -39,10 +43,13 @@ template<uint8_t Bits> struct BitMask
 };
 
 
-template <sint8_t Magnitude, uint8_t Fractional>
-class Q
+template <sint8_t Mag, uint8_t Fract>
+class Q : public QXpr<Q<Mag, Fract> >
 {
 public:
+    static const sint8_t Magnitude = Mag;
+    static const uint8_t Fractional = Fract;
+
     enum
     {
         NBits = (Magnitude < 0 ? -Magnitude : Magnitude) + Fractional,
@@ -51,13 +58,21 @@ public:
     };
 
     typedef Q<Magnitude, Fractional> this_type;
+    typedef this_type value_type;
+
     typedef typename FixedInteger<NBits,   (Magnitude < 0)>::type MagnType;
     typedef typename FixedInteger<NBits,   false>::type           FracType;
     typedef typename FixedInteger<NBits*2, (Magnitude < 0)>::type MultiplyType;
     typedef typename FixedInteger<(NBits > sizeof(float) ? NBits : sizeof(float)), false>::type FloatCastType;
 
-    Q()                   : m_Comp(0) {}
+    Q(){}
     Q(const Q& val)       : m_Comp(val.m_Comp) {}
+
+    Q(int iMagn, int iFrac) :
+        m_Magn(iMagn),
+        m_Frac(iFrac)
+    {
+    }
 
     template <typename T>
     Q(const T& val, typename boost::enable_if<boost::is_integral<T>, int>::type dummy = 0)
@@ -85,10 +100,83 @@ public:
     }
 
 
-    template<typename T>
-    operator T() const
+
+    Q& operator+=(const Q& val)
     {
-        return static_cast<T>(m_Magn);
+        m_Comp += val.m_Comp;
+        return *this;
+    }
+
+    Q& operator-=(const Q& val)
+    {
+        m_Comp -= val.m_Comp;
+        return *this;
+    }
+
+    Q& operator*=(const Q& val)
+    {
+        m_Comp =  (static_cast<MultiplyType>(m_Comp) *
+                   static_cast<MultiplyType>(val.m_Comp)) >> Fractional;
+        return *this;
+    }
+
+    Q& operator/=(const Q& val)
+    {
+        BOOST_ASSERT(val.m_Comp != 0);
+        if (val.m_Comp == 0)
+            m_Comp = BitMask<NBits>::value;
+        else
+            m_Comp = ((static_cast<MultiplyType>(m_Comp) << Fractional) / val.m_Comp) >> Fractional;
+        return *this;
+    }
+
+
+    template<typename E>
+    Q& operator=(const QXpr<E>& roRight)
+    {
+        *this = roRight().value();
+        return *this;
+    }
+
+    template<typename E>
+    Q& operator+=(const QXpr<E>& roRight)
+    {
+        *this += roRight().value();
+        return *this;
+    }
+    
+    template<typename E>
+    Q& operator-=(const QXpr<E>& roRight)
+    {
+        *this -= roRight().value();
+        return *this;
+    }
+
+    template<typename E>
+    Q& operator*=(const QXpr<E>& roRight)
+    {
+        *this *= roRight().value();
+        return *this;
+    }
+
+    template<typename E>
+    Q& operator/=(const QXpr<E>& roRight)
+    {
+        *this /= roRight().value();
+        return *this;
+    }
+
+
+    const this_type& value() const
+    {
+        return *this;
+    }
+
+
+    template<typename t>
+    operator t() const
+    {
+        return static_cast<t>(m_Magn);
     }
 
     operator float() const
@@ -103,48 +191,12 @@ public:
     {
         return (m_Magn == val.m_Magn) && (m_Frac == val.m_Frac);
     }
+    bool operator==(const Q& val) const {return m_Comp == val.m_Comp;}
     bool operator!=(const Q& val) const {return m_Comp != val.m_Comp;}
     bool operator< (const Q& val) const {return m_Comp <  val.m_Comp;}
     bool operator<=(const Q& val) const {return m_Comp <= val.m_Comp;}
     bool operator> (const Q& val) const {return m_Comp >  val.m_Comp;}
     bool operator>=(const Q& val) const {return m_Comp >= val.m_Comp;}
-
-    Q operator+ (const Q& val) const {Q res; res.m_Comp = m_Comp + val.m_Comp; return res;}
-    Q operator+=(const Q& val)       {m_Comp += val.m_Comp; return *this;}
-    Q operator- (const Q& val) const {Q res; res.m_Comp = m_Comp - val.m_Comp; return res;}
-    Q operator-=(const Q& val)       {m_Comp -= val.m_Comp; return *this;}
-    Q operator* (const Q& val) const
-    {
-        Q res;
-        res.m_Comp = (static_cast<MultiplyType>(m_Comp) *
-                      static_cast<MultiplyType>(val.m_Comp)) >> Fractional;
-        return res;
-    }
-    Q operator*=(const Q& val)
-    {
-        m_Comp =  (static_cast<MultiplyType>(m_Comp) *
-                   static_cast<MultiplyType>(val.m_Comp)) >> Fractional;
-        return *this;
-    }
-    Q operator/(const Q& val) const
-    {
-        Q res;
-        BOOST_ASSERT(val.m_Comp != 0);
-        if (val.m_Comp == 0)
-            res.m_Comp = BitMask<NBits>::value;
-        else
-            res.m_Comp = ((static_cast<MultiplyType>(m_Comp) << Fractional) / val.m_Comp) >> Fractional;
-        return res;
-    }
-    Q operator/=(const Q& val)
-    {
-        BOOST_ASSERT(val.m_Comp != 0);
-        if (val.m_Comp == 0)
-            m_Comp = BitMask<NBits>::value;
-        else
-            m_Comp = ((static_cast<MultiplyType>(m_Comp) << Fractional) / val.m_Comp) >> Fractional;
-        return *this;
-    }
 
 
     FracType Frac() {return m_Frac;}
@@ -160,7 +212,7 @@ public:
     };
 
 private:
-    typedef union FloatFormat
+    union FloatFormat
     {
         struct
         {
@@ -169,7 +221,7 @@ private:
             uint32_t sign : 1;
         };
         uint32_t full;
-    } FloatFormat;
+    };
 };
 
 template <sint8_t Magnitude, uint8_t Fractional>
@@ -216,5 +268,11 @@ Q<Magnitude, Fractional> ceil(const Q<Magnitude, Fractional>& val)
     fixed cos(void);
     fixed sin(void);
     fixed tan(void);*/
+
+#if USING_XPR_FIPU
+#include "XprFiPU.hpp"
+#else
+#include "SimpleFiPU.hpp"
+#endif
 
 #endif
