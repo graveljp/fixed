@@ -24,8 +24,8 @@ struct Mult<T,T>
     static value_type apply(const T& roLeft, const T& roRight)
     {
         value_type res;
-        res.m_Comp = (static_cast<T::MultiplyType>(roLeft.m_Comp) *
-                      static_cast<T::MultiplyType>(roRight.m_Comp)) >> T::Fractional;
+        res.m_Comp = static_cast<typename T::MagnType>((static_cast<typename T::MultiplyType>(roLeft.m_Comp) *
+                      						            static_cast<typename T::MultiplyType>(roRight.m_Comp)) >> T::Fractional);
         return res;
     }
 };
@@ -50,12 +50,12 @@ struct Div<T,T>
 
     static value_type apply(const T& roLeft, const T& roRight)
     {
-        Q res;
+        value_type res;
         BOOST_ASSERT(roRight.m_Comp != 0);
         if (roRight.m_Comp == 0)
-            res.m_Comp = BitMask<NBits>::value;
+            res.m_Comp = BitMask<value_type::NBits>::value;
         else
-            res.m_Comp = ((static_cast<T::MultiplyType>(roLeft.m_Comp) << T::Fractional) / roRight.m_Comp) >> T::Fractional;
+            res.m_Comp = ((static_cast<typename T::MultiplyType>(roLeft.m_Comp) << T::Fractional) / roRight.m_Comp) >> T::Fractional;
         return res;
     }
 };
@@ -67,7 +67,7 @@ struct Add
 
     static value_type apply(const T1& roLeft, const T2& roRight)
     {
-        Q res;
+        value_type res;
         // ????
         return res;
     }
@@ -93,7 +93,7 @@ struct Sub
 
     static value_type apply(const T1& roLeft, const T2& roRight)
     {
-        Q res;
+        value_type res;
         // ????
         return res;
     }
