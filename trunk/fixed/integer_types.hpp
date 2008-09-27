@@ -13,16 +13,20 @@
 #include "boost/config.hpp"
 
 #if defined (BOOST_MSVC)
-
-    typedef unsigned char uint8_t;
-    typedef char sint8_t;
-    typedef unsigned short uint16_t;
-    typedef short sint16_t;
-    typedef unsigned long uint32_t;
-    typedef long sint32_t;
+    typedef unsigned char      uint8_t;
+    typedef signed   char      sint8_t;
+    typedef unsigned short     uint16_t;
+    typedef signed   short     sint16_t;
+    typedef unsigned long      uint32_t;
+    typedef signed   long      sint32_t;
     typedef unsigned long long uint64_t;
-    typedef long long sint64_t;
-
+    typedef signed   long long sint64_t;
+#elif defined (__GNUC__)
+	#include <stdint.h>
+	typedef int8_t  sint8_t;
+	typedef int16_t sint16_t;
+	typedef int32_t sint32_t;
+	typedef int64_t sint64_t;
 #else
 // Integer types for compiler not yet defined
 #   error "Unsupported compiler"

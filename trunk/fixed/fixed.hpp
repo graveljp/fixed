@@ -15,12 +15,12 @@
 #include "integer_types.hpp"
 #include "QXpr.hpp"
 
-#include <boost\mpl\if.hpp>
-#include <boost\utility\enable_if.hpp>
-#include <boost\type_traits\is_integral.hpp>
-#include <boost\type_traits\is_float.hpp>
-#include <boost\type_traits\is_same.hpp>
-#include <boost\assert.hpp>
+#include <boost/mpl/if.hpp>
+#include <boost/utility/enable_if.hpp>
+#include <boost/type_traits/is_integral.hpp>
+#include <boost/type_traits/is_float.hpp>
+#include <boost/type_traits/is_same.hpp>
+#include <boost/assert.hpp>
 
 // A template to select the smallest integer type for a given amount of bits
 template <uint8_t Bits, bool Signed> struct FixedInteger
@@ -229,9 +229,9 @@ Q<Magnitude, Fractional> sqrt(const Q<Magnitude, Fractional>& val)
 {
     //if (Magnitude < 0)
     //    return MAX_VAL
-    Q<Magnitude, Fractional>::MultiplyType temp = val.m_Comp << Fractional;
-    Q<Magnitude, Fractional>::InternalType root = 0, test;
-    for (Sint8 i = Q<Magnitude, Fractional>::NBits - 1; i >= 0; i--)
+    typename Q<Magnitude, Fractional>::MultiplyType temp = val.m_Comp << Fractional;
+    typename Q<Magnitude, Fractional>::InternalType root = 0, test;
+    for (sint8_t i= Q<Magnitude, Fractional>::NBits - 1; i >= 0; i--)
     {
         test = root + (1 << i);
         if (temp >= test << i)
