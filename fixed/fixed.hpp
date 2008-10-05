@@ -20,7 +20,9 @@
 #include <boost/type_traits/is_integral.hpp>
 #include <boost/type_traits/is_float.hpp>
 #include <boost/type_traits/is_same.hpp>
+#include <boost/static_assert.hpp>
 #include <boost/assert.hpp>
+
 
 // A template to select the smallest integer type for a given amount of bits
 template <uint8_t Bits, bool Signed> struct FixedInteger
@@ -42,6 +44,7 @@ template<uint8_t Bits> struct BitMask
     static const type value = static_cast<type>(-1) >> (sizeof(type)*8-Bits);
 };
 
+#include <boost/mpl/vector.hpp>
 
 template <sint8_t Mag, uint8_t Fract>
 class Q : public QXpr<Q<Mag, Fract> >
@@ -59,21 +62,38 @@ public:
 
     typedef Q<Magnitude, Fractional> this_type;
     typedef this_type value_type;
+    typedef void op_type;
+    
+    template<typename T>
+    struct order
+    {
+        static const int value = 1;
+    };
+    
+    template<int idx> struct type_at;
+    template<>        struct type_at<0>
+    {
+        typedef this_type type;
+    };
+    template<int idx, typename probe_op> const value_type& value_at() const
+    {
+        BOOST_STATIC_ASSERT(idx==0);
+        return value();
+    }
 
     typedef typename FixedInteger<NBits,   (Magnitude < 0)>::type MagnType;
     typedef typename FixedInteger<NBits,   false>::type           FracType;
     typedef typename FixedInteger<NBits*2, (Magnitude < 0)>::type MultiplyType;
     typedef typename FixedInteger<(NBits > sizeof(float) ? NBits : sizeof(float)), false>::type FloatCastType;
 
-	Q() :
-		m_Magn(),
-		m_Frac()
-	{
-	}
+    __forceinline Q() :
+        m_Magn(),
+        m_Frac()
+    {
+    }
+    __forceinline Q(const Q& val)       : m_Comp(val.m_Comp) {}
 
-	Q(const Q& val)       : m_Comp(val.m_Comp) {}
-
-    Q(int iMagn, int iFrac) :
+    __forceinline Q(int iMagn, int iFrac) :
         m_Magn(iMagn),
         m_Frac(iFrac)
     {
@@ -86,111 +106,49 @@ public:
 	}
 
     template <typename T>
-    Q(const T& val, typename boost::enable_if<boost::is_integral<T>, int>::type dummy = 0)
+    __forceinline Q(const T& val, typename boost::enable_if<boost::is_integral<T>, int>::type dummy = 0)
     {
         m_Magn = static_cast<MagnType>(val);
         m_Frac = 0;
     }
     
     template <typename T>
-    Q(const T& val, typename boost::enable_if<boost::is_float<T>, int>::type dummy = 0)
+    __forceinline Q(const T& val, typename boost::enable_if<boost::is_float<T>, int>::type dummy = 0)
     {
         m_Comp = static_cast<MagnType>(val * (1 << Fractional));
     }
 
     template <sint8_t M, uint8_t F>
-    Q(const Q<M,F>& val, typename boost::enable_if_c<(Fractional>F), int>::type dummy = 0)
+    __forceinline Q(const Q<M,F>& val, typename boost::enable_if_c<(Fractional>F), int>::type dummy = 0)
     {
         m_Comp = static_cast<MagnType>(val.m_Comp << (Fractional - F));
     }
 
     template <sint8_t M, uint8_t F>
-    Q(const Q<M,F>& val, typename boost::enable_if_c<(Fractional<F), int>::type dummy = 0)
+    __forceinline Q(const Q<M,F>& val, typename boost::enable_if_c<(Fractional<F), int>::type dummy = 0)
     {
         m_Comp = static_cast<MagnType>(val.m_Comp >> (F - Fractional));
     }
 
 
-	
-	Q& operator+=(const Q& val)
-    {
-        m_Comp += val.m_Comp;
-        return *this;
-    }
-
-    Q& operator-=(const Q& val)
-    {
-        m_Comp -= val.m_Comp;
-        return *this;
-    }
-
-    Q& operator*=(const Q& val)
-    {
-        m_Comp =  (static_cast<MultiplyType>(m_Comp) *
-                   static_cast<MultiplyType>(val.m_Comp)) >> Fractional;
-        return *this;
-    }
-
-    Q& operator/=(const Q& val)
-    {
-        BOOST_ASSERT(val.m_Comp != 0);
-        if (val.m_Comp == 0)
-            m_Comp = BitMask<NBits>::value;
-        else
-            m_Comp = ((static_cast<MultiplyType>(m_Comp) << Fractional) / val.m_Comp) >> Fractional;
-        return *this;
-    }
-
-
     template<typename E>
-    Q& operator=(const QXpr<E>& roRight)
-    {
-        *this = roRight().value();
-        return *this;
-    }
-
-    template<typename E>
-    Q& operator+=(const QXpr<E>& roRight)
-    {
-        *this += roRight().value();
-        return *this;
-    }
-    
-    template<typename E>
-    Q& operator-=(const QXpr<E>& roRight)
-    {
-        *this -= roRight().value();
-        return *this;
-    }
-
-    template<typename E>
-    Q& operator*=(const QXpr<E>& roRight)
-    {
-        *this *= roRight().value();
-        return *this;
-    }
-
-    template<typename E>
-    Q& operator/=(const QXpr<E>& roRight)
-    {
-        *this /= roRight().value();
-        return *this;
-    }
+    __forceinline Q& operator=(const QXpr<E>& roRight);
 
 
-    const this_type& value() const
+
+    __forceinline const this_type& value() const
     {
         return *this;
     }
 
 
     template<typename t>
-    operator t() const
+    __forceinline operator t() const
     {
         return static_cast<t>(m_Magn);
     }
 
-    operator float() const
+    __forceinline operator float() const
     {   
         float result = static_cast<float>(m_Comp);
         ((FloatFormat*)&result)->exponent -= Fractional;
@@ -198,19 +156,19 @@ public:
     }
 
     template <sint8_t M, uint8_t F>
-    bool operator==(const Q<M,F>& val) const
+    __forceinline bool operator==(const Q<M,F>& val) const
     {
         return (m_Magn == val.m_Magn) && (m_Frac == val.m_Frac);
     }
-    bool operator==(const Q& val) const {return m_Comp == val.m_Comp;}
-    bool operator!=(const Q& val) const {return m_Comp != val.m_Comp;}
-    bool operator< (const Q& val) const {return m_Comp <  val.m_Comp;}
-    bool operator<=(const Q& val) const {return m_Comp <= val.m_Comp;}
-    bool operator> (const Q& val) const {return m_Comp >  val.m_Comp;}
-    bool operator>=(const Q& val) const {return m_Comp >= val.m_Comp;}
+    __forceinline bool operator==(const Q& val) const {return m_Comp == val.m_Comp;}
+    __forceinline bool operator!=(const Q& val) const {return m_Comp != val.m_Comp;}
+    __forceinline bool operator< (const Q& val) const {return m_Comp <  val.m_Comp;}
+    __forceinline bool operator<=(const Q& val) const {return m_Comp <= val.m_Comp;}
+    __forceinline bool operator> (const Q& val) const {return m_Comp >  val.m_Comp;}
+    __forceinline bool operator>=(const Q& val) const {return m_Comp >= val.m_Comp;}
 
 
-    FracType Frac() {return m_Frac;}
+    __forceinline FracType Frac() {return m_Frac;}
 
     union
     {
