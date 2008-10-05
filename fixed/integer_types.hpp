@@ -12,7 +12,7 @@
 
 #include "boost/config.hpp"
 
-#if defined (BOOST_MSVC)
+#if defined (BOOST_MSVC) || defined (BOOST_INTEL)
     typedef unsigned char      uint8_t;
     typedef signed   char      sint8_t;
     typedef unsigned short     uint16_t;
@@ -30,7 +30,6 @@
 #else
 // Integer types for compiler not yet defined
 #   error "Unsupported compiler"
-
 #endif
 
 #endif
