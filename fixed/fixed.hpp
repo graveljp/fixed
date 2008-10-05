@@ -66,7 +66,7 @@ public:
     typedef typename FixedInteger<(NBits > sizeof(float) ? NBits : sizeof(float)), false>::type FloatCastType;
 
 	Q() :
-	m_Magn(),
+		m_Magn(),
 		m_Frac()
 	{
 	}
