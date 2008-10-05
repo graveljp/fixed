@@ -65,14 +65,25 @@ public:
     typedef typename FixedInteger<NBits*2, (Magnitude < 0)>::type MultiplyType;
     typedef typename FixedInteger<(NBits > sizeof(float) ? NBits : sizeof(float)), false>::type FloatCastType;
 
-    Q(){}
-    Q(const Q& val)       : m_Comp(val.m_Comp) {}
+	Q() :
+	m_Magn(),
+		m_Frac()
+	{
+	}
+
+	Q(const Q& val)       : m_Comp(val.m_Comp) {}
 
     Q(int iMagn, int iFrac) :
         m_Magn(iMagn),
         m_Frac(iFrac)
     {
     }
+
+	template<typename E>
+	Q(const QXpr<E>& roRight)
+	{
+		*this = roRight().value();
+	}
 
     template <typename T>
     Q(const T& val, typename boost::enable_if<boost::is_integral<T>, int>::type dummy = 0)
@@ -100,8 +111,8 @@ public:
     }
 
 
-
-    Q& operator+=(const Q& val)
+	
+	Q& operator+=(const Q& val)
     {
         m_Comp += val.m_Comp;
         return *this;
