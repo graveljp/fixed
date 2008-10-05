@@ -10,7 +10,7 @@
 // (See accompanying file NewBSDLicense.txt or copy at 
 // http://www.opensource.org/licenses/bsd-license.php)
 
-#define USING_XPR_FIPU 1
+#define USING_XPR_OPTIMIZER 1
 
 #include "integer_types.hpp"
 #include "QXpr.hpp"
@@ -238,10 +238,12 @@ Q<Magnitude, Fractional> ceil(const Q<Magnitude, Fractional>& val)
     fixed sin(void);
     fixed tan(void);*/
 
-#if USING_XPR_FIPU
-#include "XprFiPU.hpp"
-#else
 #include "SimpleFiPU.hpp"
+
+#if USING_XPR_OPTIMIZER
+#include "XprOptimizer.hpp"
+#else
+#include "SimpleOptimizer.hpp"
 #endif
 
 #endif
