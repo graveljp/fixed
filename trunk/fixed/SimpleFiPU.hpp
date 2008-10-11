@@ -3,12 +3,6 @@
 
 #include "promote_traits.hpp"
 
-//template <res_type, l_type, r_type>
-//res_type operator+ (const l_type& roLeft, const r_type& roRight)
-//{
-//
-//}
-
 struct mult_opcode {};
 struct div_opcode {};
 struct add_opcode {};
@@ -86,7 +80,7 @@ struct Add
 
         __forceinline static value_type apply(const T1& roLeft, const T2& roRight)
         {
-            vale_type res;
+            value_type res;
             // ????
             return res;
         }
