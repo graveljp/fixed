@@ -66,28 +66,28 @@ __forceinline bool operator>=(const QXpr<E1>& roLeft, const QXpr<E2>& roRight)
 template <sint8_t Mag, uint8_t Fract>
 __forceinline Q<Mag, Fract>& operator+=(Q<Mag, Fract>& roLeft, const Q<Mag, Fract>& roRight)
 {
-    roLeft = Add::instance<Q<Mag,Fract>,Q<Mag,Fract> >::apply(roLeft, roRight);
+    roLeft = Add::instance<Q<Mag,Fract>,Q<Mag,Fract> >::apply<Q<Mag, Fract> >(roLeft, roRight);
     return roLeft;
 }
 
 template <sint8_t Mag, uint8_t Fract>
 __forceinline Q<Mag, Fract>& operator-=(Q<Mag, Fract>& roLeft, const Q<Mag, Fract>& roRight)
 {
-    roLeft = Sub::instance<Q<Mag,Fract>,Q<Mag,Fract> >::apply(roLeft, roRight);
+    roLeft = Sub::instance<Q<Mag,Fract>,Q<Mag,Fract> >::apply<Q<Mag, Fract> >(roLeft, roRight);
     return roLeft;
 }
 
 template <sint8_t Mag, uint8_t Fract>
 __forceinline Q<Mag, Fract>& operator*=(Q<Mag, Fract>& roLeft, const Q<Mag, Fract>& roRight)
 {
-    roLeft = Mult::instance<Q<Mag,Fract>,Q<Mag,Fract> >::apply(roLeft, roRight);
+    roLeft = Mult::instance<Q<Mag,Fract>,Q<Mag,Fract> >::apply<Q<Mag, Fract> >(roLeft, roRight);
     return roLeft;
 }
 
 template <sint8_t Mag, uint8_t Fract>
 __forceinline Q<Mag, Fract>& operator/=(Q<Mag, Fract>& roLeft, const Q<Mag, Fract>& roRight)
 {
-    roLeft = Div::instance<Q<Mag,Fract>,Q<Mag,Fract> >::apply(roLeft, roRight);
+    roLeft = Div::instance<Q<Mag,Fract>,Q<Mag,Fract> >::apply<Q<Mag, Fract> >(roLeft, roRight);
     return roLeft;
 }
 
@@ -96,35 +96,35 @@ template<sint8_t Mag, uint8_t Fract>
 template<typename E>
 __forceinline Q<Mag, Fract>& Q<Mag, Fract>::operator=(const QXpr<E>& roRight)
 {
-    *this = roRight().value();
+    *this = roRight().value<Q<Mag, Fract> >();
     return *this;
 }
 
 template<sint8_t Mag, uint8_t Fract, typename E>
 __forceinline Q<Mag, Fract>& operator+=(Q<Mag, Fract>& roLeft, const QXpr<E>& roRight)
 {
-    roLeft += roRight().value();
+    roLeft += roRight().value<Q<Mag, Fract> >();
     return roLeft;
 }
 
 template<sint8_t Mag, uint8_t Fract, typename E>
 __forceinline Q<Mag, Fract>& operator-=(Q<Mag, Fract>& roLeft, const QXpr<E>& roRight)
 {
-    roLeft -= roRight().value();
+    roLeft -= roRight().value<Q<Mag, Fract> >();
     return roLeft;
 }
 
 template<sint8_t Mag, uint8_t Fract, typename E>
 __forceinline Q<Mag, Fract>& operator*=(Q<Mag, Fract>& roLeft, const QXpr<E>& roRight)
 {
-    roLeft *= roRight().value();
+    roLeft *= roRight().value<Q<Mag, Fract> >();
     return roLeft;
 }
 
 template<sint8_t Mag, uint8_t Fract, typename E>
 __forceinline Q<Mag, Fract>& operator/=(Q<Mag, Fract>& roLeft, const QXpr<E>& roRight)
 {
-    roLeft /= roRight().value();
+    roLeft /= roRight().value<Q<Mag, Fract> >();
     return roLeft;
 }
 

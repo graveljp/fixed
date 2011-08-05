@@ -1,13 +1,7 @@
 #ifndef __Q_XPR_HPP_INC__
 #define __Q_XPR_HPP_INC__
 
-#include <boost/mpl/begin.hpp>
-#include <boost/mpl/end.hpp>
-#include <boost/mpl/advance.hpp>
-#include <boost/mpl/iterator_range.hpp>
-#include <boost/mpl/size.hpp>
-#include <boost/mpl/front.hpp>
-#include <boost/mpl/at.hpp>
+#include <boost/mpl/if.hpp>
 #include <boost/utility/enable_if.hpp>
 #include <boost/type_traits/is_same.hpp>
 
@@ -33,7 +27,7 @@ public:
     template<typename T>
     struct order
     {
-        static const int value = 1;
+        enum { value = 1 };
     };
 
     template<>
@@ -41,11 +35,10 @@ public:
     {
         typedef typename boost::is_same<typename E1::op_type, Op>::type e1_compatible;
         typedef typename boost::is_same<typename E2::op_type, Op>::type e2_compatible;
-        static const int value = (e1_compatible::value||E1::template order<Op>::value==1)&&(e2_compatible::value||E2::template order<Op>::value==1) ? E1::template order<Op>::value+E2::template order<Op>::value : 2;
+        enum { value = (e1_compatible::value||E1::template order<Op>::value==1)&&(e2_compatible::value||E2::template order<Op>::value==1) ? E1::template order<Op>::value+E2::template order<Op>::value : 2 };
     };
     
     typedef Op op_type;
-    typedef typename Op::instance<typename E1::value_type, typename E2::value_type>::value_type value_type;
 
     __forceinline explicit BinXpr(const E1& roLeft, const E2& roRight) :
         m_roLeft(roLeft),
@@ -56,8 +49,8 @@ public:
     template<int idx>
     struct type_at
     {
-        static const int e1_idx = idx<(E1::template order<Op>::value) ? idx : 0;
-        static const int e2_idx = idx>=(E1::template order<Op>::value) ? idx-(E1::template order<Op>::value) : 0;
+        enum { e1_idx = idx<(E1::template order<Op>::value) ? idx : 0 };
+        enum { e2_idx = idx>=(E1::template order<Op>::value) ? idx-(E1::template order<Op>::value) : 0 };
         typedef typename E1::template type_at<e1_idx> e1_type;
         typedef typename E2::template type_at<e2_idx> e2_type;
         typedef typename boost::mpl::if_c< (idx<(E1::template order<Op>::value)), typename e1_type::type, typename e2_type::type >::type type;
@@ -66,7 +59,10 @@ public:
     template<int first, int last>
     struct type_of
     {
-        typedef typename Op::instance<typename type_of<first,(first+last)/2>::type, typename type_of<(first+last)/2+1, last>::type>::value_type type;
+        typedef typename type_of<first,(first+last)/2>::type    left_type;
+        typedef typename type_of<(first+last)/2+1, last>::type  right_type;
+        
+        typedef typename Op::instance<left_type, right_type>::result_type type;
     };
     
     template<int idx>
@@ -75,49 +71,56 @@ public:
         typedef typename type_at<idx>::type type;
     };
 
-    __forceinline typename type_of<0, order<Op>::value-1>::type
+    template<typename dest_type>
+    __forceinline dest_type
     value() const
     {
-        return eval(boost::mpl::int_<0>(), boost::mpl::int_<order<Op>::value-1>());
+        return eval<dest_type>(boost::mpl::int_<0>(), boost::mpl::int_<order<Op>::value-1>());
     }
 
-    template<typename first, typename last>
+    template<typename dest_type, typename first, typename last>
     __forceinline typename type_of<first::value, last::value>::type
     eval(first, last) const
     {
-        return Op::instance<typename type_of<(first::value), ((first::value)+(last::value))/2>::type,
-                            typename type_of<((first::value)+(last::value))/2+1, (last::value)>::type >
-               ::apply(eval(first(), boost::mpl::int_<((first::value)+(last::value))/2>()),
-                       eval(boost::mpl::int_<((first::value)+(last::value))/2+1>(), last()));
+        typedef first                                              left_begin;
+        typedef boost::mpl::int_<(first::value + last::value)/2>   left_end;
+        typedef boost::mpl::int_<(first::value + last::value)/2+1> right_begin;
+        typedef last                                               right_end;
+
+        typedef Op::instance < typename type_of< left_begin::value,  left_end::value  >::type,
+                               typename type_of< right_begin::value, right_end::value >::type > OpInstance;
+
+        return OpInstance::apply(eval<dest_type>(left_begin(),  left_end()),
+                                 eval<dest_type>(right_begin(), right_end()));
     }
     
-    template<typename idx>
+    template<typename dest_type, typename idx>
     __forceinline typename type_at<idx::value>::type
     eval(idx, idx) const
     {
-        return value_at<idx::value, Op>();
+        return value_at<dest_type, idx::value, Op>();
     }
 
 
-    template<int idx, typename probe_op>
+    template<typename dest_type, int idx, typename probe_op>
     __forceinline typename type_at<idx>::type
     value_at(typename boost::enable_if_c<order<probe_op>::value!=1 && (idx<(E1::template order<probe_op>::value)), int>::type=0) const
     {
-        return m_roLeft.value_at<idx, probe_op>();
+        return m_roLeft.value_at<dest_type, idx, probe_op>();
     }
 
-    template<int idx, typename probe_op>
+    template<typename dest_type, int idx, typename probe_op>
     __forceinline typename type_at<idx>::type
     value_at(typename boost::enable_if_c<order<probe_op>::value!=1 && (idx>=(E1::template order<probe_op>::value)), int>::type=0) const
     {
-        return m_roRight.value_at<idx-(E1::order<probe_op>::value), probe_op>();
+        return m_roRight.value_at<dest_type, idx-(E1::order<probe_op>::value), probe_op>();
     }
 
-    template<int idx, typename probe_op>
+    template<typename dest_type, int idx, typename probe_op>
     __forceinline typename type_at<idx>::type
     value_at(typename boost::enable_if_c<order<probe_op>::value==1, int>::type=0) const
     {
-        return value();
+        return value<dest_type>();
     }
 
 private:
