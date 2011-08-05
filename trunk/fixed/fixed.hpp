@@ -27,10 +27,10 @@
 // A template to select the smallest integer type for a given amount of bits
 template <uint8_t Bits, bool Signed> struct FixedInteger
 {
-    typedef typename boost::mpl::if_c<(Bits <= 8 && Signed),   sint8_t
-          , typename boost::mpl::if_c<(Bits <= 8 && !Signed),  uint8_t
-          , typename boost::mpl::if_c<(Bits <= 16 && Signed),  sint16_t
-          , typename boost::mpl::if_c<(Bits <= 16 && !Signed), uint16_t
+    typedef typename boost::mpl::if_c<(Bits <= 8 && Signed),   sint32_t
+          , typename boost::mpl::if_c<(Bits <= 8 && !Signed),  uint32_t
+          , typename boost::mpl::if_c<(Bits <= 16 && Signed),  sint32_t
+          , typename boost::mpl::if_c<(Bits <= 16 && !Signed), uint32_t
           , typename boost::mpl::if_c<(Bits <= 32 && Signed),  sint32_t
           , typename boost::mpl::if_c<(Bits <= 32 && !Signed), uint32_t
           , typename boost::mpl::if_c<(Bits <= 64 && Signed),  sint64_t
@@ -50,24 +50,22 @@ template <sint8_t Mag, uint8_t Fract>
 class Q : public QXpr<Q<Mag, Fract> >
 {
 public:
-    static const sint8_t Magnitude = Mag;
-    static const uint8_t Fractional = Fract;
-
     enum
     {
+        Magnitude = Mag,
+        Fractional = Fract,
         NBits = (Magnitude < 0 ? -Magnitude : Magnitude) + Fractional,
         NBits_Magn = (Magnitude < 0 ? -Magnitude : Magnitude),
         NBits_Frac = Fractional
     };
 
     typedef Q<Magnitude, Fractional> this_type;
-    typedef this_type value_type;
     typedef void op_type;
     
     template<typename T>
     struct order
     {
-        static const int value = 1;
+        enum { value = 1 };
     };
     
     template<int idx> struct type_at;
@@ -75,7 +73,9 @@ public:
     {
         typedef this_type type;
     };
-    template<int idx, typename probe_op> const value_type& value_at() const
+    
+    template<typename dest_type, int idx, typename probe_op>
+    const this_type& value_at() const
     {
         BOOST_STATIC_ASSERT(idx==0);
         return value();
@@ -99,11 +99,11 @@ public:
     {
     }
 
-	template<typename E>
-	Q(const QXpr<E>& roRight)
-	{
-		*this = roRight().value();
-	}
+    template<typename E>
+    Q(const QXpr<E>& roRight)
+    {
+        *this = roRight().value<this_type>();
+    }
 
     template <typename T>
     __forceinline Q(const T& val, typename boost::enable_if<boost::is_integral<T>, int>::type dummy = 0)
