@@ -27,7 +27,6 @@ struct Mult
                    NBits<T1,T2>::Fractional > type;
     };
 
-
     template<class T1, class T2>
     __forceinline static typename result<T1, T2>::type apply(const T1& roLeft, const T2& roRight)
     {
@@ -41,6 +40,11 @@ struct Mult
       res.valueStr = "(" + roLeft.valueStr + " * " + roRight.valueStr + " [" + boost::lexical_cast<std::string>(res.m_Magn) + "," + boost::lexical_cast<std::string>(res.m_Frac) + "] )";
       res.floatStr = "(" + roLeft.floatStr + " * " + roRight.floatStr + " [" + boost::lexical_cast<std::string>((float)res) + "] )";
       res.floatValue = roLeft.floatValue * roRight.floatValue;
+      res.cumulativeEpsilon = (double)roLeft  * roRight.cumulativeEpsilon +
+                              (double)roRight * roLeft.cumulativeEpsilon +
+                              roLeft.cumulativeEpsilon * roRight.cumulativeEpsilon;
+                              
+;
 #endif //FIXED_DEBUG_MODE
 
       return res;
