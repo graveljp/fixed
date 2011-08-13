@@ -23,9 +23,9 @@
 #include <boost/static_assert.hpp>
 #include <boost/assert.hpp>
 
-#ifdef DEBUG_MODE
+#ifdef FIXED_DEBUG_MODE
 #include <boost/lexical_cast.hpp>
-#endif //DEBUG_MODE
+#endif //FIXED_DEBUG_MODE
 
 // A template to select the smallest integer type for a given amount of bits
 template <uint8_t Bits, bool Signed> struct FixedInteger
@@ -62,21 +62,9 @@ public:
     };
 
     typedef Q<Magnitude, Fractional> this_type;
-    typedef this_type result_type;
     typedef void op_type;
     
-    template<typename T>
-    struct order
-    {
-        enum { value = 1 };
-    };
 
-    template< typename dest_type, int precisionBoost >
-    struct AdjustedTypes
-    {
-        typedef this_type Result;
-    };
-    
     typedef typename FixedInteger<NBits,   (Magnitude < 0)>::type MagnType;
     typedef typename FixedInteger<NBits,   false>::type           FracType;
     typedef typename FixedInteger<NBits*2, (Magnitude < 0)>::type MultiplyType;
@@ -86,36 +74,45 @@ public:
     template<int bitAdjustment>
     struct AdjustType
     {
-      enum { magnBoost = bitAdjustment * Magnitude / NBits };
-      enum { fracBoost = bitAdjustment * Fractional / NBits };
-      typedef Q<Magnitude + magnBoost, Fractional + fracBoost> type;
+        enum { magnBoost = bitAdjustment * Magnitude / NBits };
+        enum { fracBoost = bitAdjustment * Fractional / NBits };
+        typedef Q<Magnitude + magnBoost, Fractional + fracBoost> type;
     };
 
 
     __forceinline Q() :
-        m_Magn(),
-        m_Frac()
+        m_CompFast()
     {
-#ifdef DEBUG_MODE
-      debugStr = "Q" + boost::lexical_cast<std::string>(Magnitude) + "," + boost::lexical_cast<std::string>(Fractional) + "";
-#endif //DEBUG_MODE
+#ifdef FIXED_DEBUG_MODE
+        typeStr = "Q" + boost::lexical_cast<std::string>(Magnitude) + "," + boost::lexical_cast<std::string>(Fractional);
+        valueStr = boost::lexical_cast<std::string>(m_Magn) + "," + boost::lexical_cast<std::string>(m_Frac);
+        floatStr = boost::lexical_cast<std::string>((float)*this);
+        floatValue = (float)*this;
+#endif //FIXED_DEBUG_MODE
     }
 
     __forceinline Q(const Q& val) :
-#ifdef DEBUG_MODE
-          debugStr(val.debugStr),
-#endif //DEBUG_MODE
+#ifdef FIXED_DEBUG_MODE
+          typeStr(val.typeStr),
+          valueStr(val.valueStr),
+          floatStr(val.floatStr),
+          floatValue(val.floatValue),
+#endif //FIXED_DEBUG_MODE
           m_CompFast(val.m_CompFast & BitMask<NBits>::value )
     {
     }
 
-    __forceinline Q(int iMagn, int iFrac) :
-        m_Magn(iMagn),
-        m_Frac(iFrac)
+    __forceinline Q(int iMagn, int iFrac)
     {
-#ifdef DEBUG_MODE
-        debugStr = "Q" + boost::lexical_cast<std::string>(Magnitude) + "," + boost::lexical_cast<std::string>(Fractional) + "";
-#endif //DEBUG_MODE
+        m_CompFast = 0;
+        m_Magn = iMagn;
+        m_Frac = iFrac;
+#ifdef FIXED_DEBUG_MODE
+        typeStr = "Q" + boost::lexical_cast<std::string>(Magnitude) + "," + boost::lexical_cast<std::string>(Fractional) + "";
+        valueStr = boost::lexical_cast<std::string>(m_Magn) + "," + boost::lexical_cast<std::string>(m_Frac);
+        floatStr = boost::lexical_cast<std::string>((float)*this);
+        floatValue = (float)*this;
+#endif //FIXED_DEBUG_MODE
     }
 
     template<typename E>
@@ -127,12 +124,16 @@ public:
     template <typename T>
     __forceinline Q( const T& val, typename boost::enable_if<boost::is_integral<T>, int >::type dummy = 0 )
     {
+        m_CompFast = 0;
         m_Magn = static_cast<MagnType>(val);
         m_Frac = 0;
 
-#ifdef DEBUG_MODE
-        debugStr = "Q" + boost::lexical_cast<std::string>(Magnitude) + "," + boost::lexical_cast<std::string>(Fractional) + "";
-#endif //DEBUG_MODE
+#ifdef FIXED_DEBUG_MODE
+        typeStr = "Q" + boost::lexical_cast<std::string>(Magnitude) + "," + boost::lexical_cast<std::string>(Fractional) + "";
+        valueStr = boost::lexical_cast<std::string>(m_Magn) + "," + boost::lexical_cast<std::string>(m_Frac);
+        floatStr = boost::lexical_cast<std::string>((float)*this);
+        floatValue = (float)*this;
+#endif //FIXED_DEBUG_MODE
     }
     
     template <typename T>
@@ -140,9 +141,12 @@ public:
     {
         m_CompFast = static_cast<MagnType>(val * (1 << Fractional)) & BitMask<NBits>::value;
 
-#ifdef DEBUG_MODE
-        debugStr = "Q" + boost::lexical_cast<std::string>(Magnitude) + "," + boost::lexical_cast<std::string>(Fractional) + "";
-#endif //DEBUG_MODE
+#ifdef FIXED_DEBUG_MODE
+        typeStr = "Q" + boost::lexical_cast<std::string>(Magnitude) + "," + boost::lexical_cast<std::string>(Fractional) + "";
+        valueStr = boost::lexical_cast<std::string>(m_Magn) + "," + boost::lexical_cast<std::string>(m_Frac);
+        floatStr = boost::lexical_cast<std::string>((float)*this);
+        floatValue = val;
+#endif //FIXED_DEBUG_MODE
     }
 
     template <sint8_t M, uint8_t F>
@@ -158,9 +162,12 @@ public:
         enum { shift = Fractional - F };
         m_CompFast = static_cast<MagnType>(val.m_CompFast << shift) & BitMask<NBits>::value;
 
-#ifdef DEBUG_MODE
-        debugStr = "(" + val.debugStr + " << " + boost::lexical_cast<std::string>(shift) + " [Q" + boost::lexical_cast<std::string>(Magnitude) + "," + boost::lexical_cast<std::string>(Fractional) + "] )";
-#endif //DEBUG_MODE
+#ifdef FIXED_DEBUG_MODE
+        typeStr = "(" + val.typeStr + " << " + boost::lexical_cast<std::string>(shift) + " [Q" + boost::lexical_cast<std::string>(Magnitude) + "," + boost::lexical_cast<std::string>(Fractional) + "] )";
+        valueStr = "(" + val.valueStr + " << " + boost::lexical_cast<std::string>(shift) + " [" + boost::lexical_cast<std::string>(m_Magn) + "," + boost::lexical_cast<std::string>(m_Frac) + "] )";
+        floatStr = "(" + val.floatStr + " << " + boost::lexical_cast<std::string>(shift) + " [" + boost::lexical_cast<std::string>((float)*this) + "] )";
+        floatValue = val.floatValue;
+#endif //FIXED_DEBUG_MODE
         return *this;
     }
 
@@ -172,9 +179,12 @@ public:
 
         m_CompFast = static_cast<MagnType>(val.m_CompExact >> shift) & BitMask<NBits>::value;
         
-#ifdef DEBUG_MODE
-        debugStr = "(" + val.debugStr + " >> " + boost::lexical_cast<std::string>(shift) + " [Q" + boost::lexical_cast<std::string>(Magnitude) + "," + boost::lexical_cast<std::string>(Fractional) + "] )";
-#endif //DEBUG_MODE
+#ifdef FIXED_DEBUG_MODE
+        typeStr = "(" + val.typeStr + " >> " + boost::lexical_cast<std::string>(shift) + " [Q" + boost::lexical_cast<std::string>(Magnitude) + "," + boost::lexical_cast<std::string>(Fractional) + "] )";
+        valueStr = "(" + val.valueStr + " >> " + boost::lexical_cast<std::string>(shift) + " [" + boost::lexical_cast<std::string>(m_Magn) + "," + boost::lexical_cast<std::string>(m_Frac) + "] )";
+        floatStr = "(" + val.floatStr + " >> " + boost::lexical_cast<std::string>(shift) + " [" + boost::lexical_cast<std::string>((float)*this) + "] )";
+        floatValue = val.floatValue;
+#endif //FIXED_DEBUG_MODE
         return *this;
     }
 
@@ -182,18 +192,6 @@ public:
     template<typename E>
     __forceinline Q& operator=(const QXpr<E>& roRight);
 
-
-    template<typename dest_type>
-    __forceinline const result_type& value() const
-    {
-      return *this;
-    }
-
-    template<typename dest_type, int precisionBoost>
-    __forceinline const result_type& promotedValue() const
-    {
-      return *this;
-    }
 
 
     template<typename t>
@@ -231,16 +229,24 @@ public:
             FracType m_Frac : NBits_Frac;
             MagnType m_Magn : NBits_Magn;
         };
+
         struct
         {
             MagnType m_CompExact: NBits;
         };
-        MagnType m_CompFast;
+
+        struct
+        {
+            MagnType m_CompFast;
+        };
     };
 
-#ifdef DEBUG_MODE
-    std::string debugStr;
-#endif //DEBUG_MODE
+#ifdef FIXED_DEBUG_MODE
+    std::string typeStr;
+    std::string valueStr;
+    std::string floatStr;
+    float floatValue;
+#endif //FIXED_DEBUG_MODE
 
 private:
     union FloatFormat

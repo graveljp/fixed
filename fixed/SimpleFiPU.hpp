@@ -23,8 +23,8 @@ struct Mult
     template<typename T1, typename T2>
     struct result
     {
-        typedef Q< NBits<T1,T2>::Fractional, 
-                   NBits<T1,T2>::Magnitude > type;
+        typedef Q< NBits<T1,T2>::Magnitude, 
+                   NBits<T1,T2>::Fractional > type;
     };
 
 
@@ -33,12 +33,15 @@ struct Mult
     {
       typedef result<T1,T2>::type result_type;
       result_type res;
-      res.m_CompFast = static_cast<typename result_type ::MagnType>(roLeft.m_CompFast) *
+      res.m_CompFast = static_cast<typename result_type::MagnType>(roLeft.m_CompFast) *
                        static_cast<typename result_type::MagnType>(roRight.m_CompFast);
 
-#ifdef DEBUG_MODE
-      res.debugStr = "(" + roLeft.debugStr + " * " + roRight.debugStr + ")";
-#endif //DEBUG_MODE
+#ifdef FIXED_DEBUG_MODE
+      res.typeStr = "(" + roLeft.typeStr + " * " + roRight.typeStr + ")";
+      res.valueStr = "(" + roLeft.valueStr + " * " + roRight.valueStr + " [" + boost::lexical_cast<std::string>(res.m_Magn) + "," + boost::lexical_cast<std::string>(res.m_Frac) + "] )";
+      res.floatStr = "(" + roLeft.floatStr + " * " + roRight.floatStr + " [" + boost::lexical_cast<std::string>((float)res) + "] )";
+      res.floatValue = roLeft.floatValue * roRight.floatValue;
+#endif //FIXED_DEBUG_MODE
 
       return res;
     }
