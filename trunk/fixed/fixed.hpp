@@ -23,6 +23,9 @@
 #include <boost/static_assert.hpp>
 #include <boost/assert.hpp>
 
+#ifdef DEBUG_MODE
+#include <boost/lexical_cast.hpp>
+#endif //DEBUG_MODE
 
 // A template to select the smallest integer type for a given amount of bits
 template <uint8_t Bits, bool Signed> struct FixedInteger
@@ -44,7 +47,6 @@ template<uint8_t Bits> struct BitMask
     static const type value = static_cast<type>(-1) >> (sizeof(type)*8-Bits);
 };
 
-#include <boost/mpl/vector.hpp>
 
 template <sint8_t Mag, uint8_t Fract>
 class Q : public QXpr<Q<Mag, Fract> >
@@ -54,12 +56,13 @@ public:
     {
         Magnitude = Mag,
         Fractional = Fract,
-        NBits = (Magnitude < 0 ? -Magnitude : Magnitude) + Fractional,
         NBits_Magn = (Magnitude < 0 ? -Magnitude : Magnitude),
-        NBits_Frac = Fractional
+        NBits_Frac = Fractional,
+        NBits = NBits_Magn + NBits_Frac
     };
 
     typedef Q<Magnitude, Fractional> this_type;
+    typedef this_type result_type;
     typedef void op_type;
     
     template<typename T>
@@ -67,36 +70,52 @@ public:
     {
         enum { value = 1 };
     };
-    
-    template<int idx> struct type_at;
-    template<>        struct type_at<0>
+
+    template< typename dest_type, int precisionBoost >
+    struct AdjustedTypes
     {
-        typedef this_type type;
+        typedef this_type Result;
     };
     
-    template<typename dest_type, int idx, typename probe_op>
-    const this_type& value_at() const
-    {
-        BOOST_STATIC_ASSERT(idx==0);
-        return value();
-    }
-
     typedef typename FixedInteger<NBits,   (Magnitude < 0)>::type MagnType;
     typedef typename FixedInteger<NBits,   false>::type           FracType;
     typedef typename FixedInteger<NBits*2, (Magnitude < 0)>::type MultiplyType;
     typedef typename FixedInteger<(NBits > sizeof(float) ? NBits : sizeof(float)), false>::type FloatCastType;
 
+
+    template<int bitAdjustment>
+    struct AdjustType
+    {
+      enum { magnBoost = bitAdjustment * Magnitude / NBits };
+      enum { fracBoost = bitAdjustment * Fractional / NBits };
+      typedef Q<Magnitude + magnBoost, Fractional + fracBoost> type;
+    };
+
+
     __forceinline Q() :
         m_Magn(),
         m_Frac()
     {
+#ifdef DEBUG_MODE
+      debugStr = "Q" + boost::lexical_cast<std::string>(Magnitude) + "," + boost::lexical_cast<std::string>(Fractional) + "";
+#endif //DEBUG_MODE
     }
-    __forceinline Q(const Q& val)       : m_Comp(val.m_Comp) {}
+
+    __forceinline Q(const Q& val) :
+#ifdef DEBUG_MODE
+          debugStr(val.debugStr),
+#endif //DEBUG_MODE
+          m_CompFast(val.m_CompFast & BitMask<NBits>::value )
+    {
+    }
 
     __forceinline Q(int iMagn, int iFrac) :
         m_Magn(iMagn),
         m_Frac(iFrac)
     {
+#ifdef DEBUG_MODE
+        debugStr = "Q" + boost::lexical_cast<std::string>(Magnitude) + "," + boost::lexical_cast<std::string>(Fractional) + "";
+#endif //DEBUG_MODE
     }
 
     template<typename E>
@@ -106,28 +125,57 @@ public:
     }
 
     template <typename T>
-    __forceinline Q(const T& val, typename boost::enable_if<boost::is_integral<T>, int>::type dummy = 0)
+    __forceinline Q( const T& val, typename boost::enable_if<boost::is_integral<T>, int >::type dummy = 0 )
     {
         m_Magn = static_cast<MagnType>(val);
         m_Frac = 0;
+
+#ifdef DEBUG_MODE
+        debugStr = "Q" + boost::lexical_cast<std::string>(Magnitude) + "," + boost::lexical_cast<std::string>(Fractional) + "";
+#endif //DEBUG_MODE
     }
     
     template <typename T>
-    __forceinline Q(const T& val, typename boost::enable_if<boost::is_float<T>, int>::type dummy = 0)
+    __forceinline Q( const T& val, typename boost::enable_if<boost::is_float<T>, int >::type dummy = 0 )
     {
-        m_Comp = static_cast<MagnType>(val * (1 << Fractional));
+        m_CompFast = static_cast<MagnType>(val * (1 << Fractional)) & BitMask<NBits>::value;
+
+#ifdef DEBUG_MODE
+        debugStr = "Q" + boost::lexical_cast<std::string>(Magnitude) + "," + boost::lexical_cast<std::string>(Fractional) + "";
+#endif //DEBUG_MODE
     }
 
     template <sint8_t M, uint8_t F>
-    __forceinline Q(const Q<M,F>& val, typename boost::enable_if_c<(Fractional>F), int>::type dummy = 0)
+    __forceinline Q( const Q<M,F>& val )
     {
-        m_Comp = static_cast<MagnType>(val.m_Comp << (Fractional - F));
+        *this = val;
     }
 
     template <sint8_t M, uint8_t F>
-    __forceinline Q(const Q<M,F>& val, typename boost::enable_if_c<(Fractional<F), int>::type dummy = 0)
+    __forceinline typename boost::enable_if_c<(Fractional>F), this_type& >::type
+    operator=( const Q<M,F>& val )
     {
-        m_Comp = static_cast<MagnType>(val.m_Comp >> (F - Fractional));
+        enum { shift = Fractional - F };
+        m_CompFast = static_cast<MagnType>(val.m_CompFast << shift) & BitMask<NBits>::value;
+
+#ifdef DEBUG_MODE
+        debugStr = "(" + val.debugStr + " << " + boost::lexical_cast<std::string>(shift) + " [Q" + boost::lexical_cast<std::string>(Magnitude) + "," + boost::lexical_cast<std::string>(Fractional) + "] )";
+#endif //DEBUG_MODE
+        return *this;
+    }
+
+    template <sint8_t M, uint8_t F>
+    __forceinline typename boost::enable_if_c<(Fractional<F), this_type& >::type
+    operator=( const Q<M,F>&  val )
+    {
+        enum { shift = F - Fractional };
+
+        m_CompFast = static_cast<MagnType>(val.m_CompExact >> shift) & BitMask<NBits>::value;
+        
+#ifdef DEBUG_MODE
+        debugStr = "(" + val.debugStr + " >> " + boost::lexical_cast<std::string>(shift) + " [Q" + boost::lexical_cast<std::string>(Magnitude) + "," + boost::lexical_cast<std::string>(Fractional) + "] )";
+#endif //DEBUG_MODE
+        return *this;
     }
 
 
@@ -135,10 +183,16 @@ public:
     __forceinline Q& operator=(const QXpr<E>& roRight);
 
 
-
-    __forceinline const this_type& value() const
+    template<typename dest_type>
+    __forceinline const result_type& value() const
     {
-        return *this;
+      return *this;
+    }
+
+    template<typename dest_type, int precisionBoost>
+    __forceinline const result_type& promotedValue() const
+    {
+      return *this;
     }
 
 
@@ -150,9 +204,9 @@ public:
 
     __forceinline operator float() const
     {   
-        float result = static_cast<float>(m_Comp);
+        float result = static_cast<float>(m_CompExact);
         ((FloatFormat*)&result)->exponent -= Fractional;
-        return (0 == m_Comp) ? 0.0f : result;
+        return (0 == m_CompExact) ? 0.0f : result;
     }
 
     template <sint8_t M, uint8_t F>
@@ -160,12 +214,12 @@ public:
     {
         return (m_Magn == val.m_Magn) && (m_Frac == val.m_Frac);
     }
-    __forceinline bool operator==(const Q& val) const {return m_Comp == val.m_Comp;}
-    __forceinline bool operator!=(const Q& val) const {return m_Comp != val.m_Comp;}
-    __forceinline bool operator< (const Q& val) const {return m_Comp <  val.m_Comp;}
-    __forceinline bool operator<=(const Q& val) const {return m_Comp <= val.m_Comp;}
-    __forceinline bool operator> (const Q& val) const {return m_Comp >  val.m_Comp;}
-    __forceinline bool operator>=(const Q& val) const {return m_Comp >= val.m_Comp;}
+    __forceinline bool operator==(const Q& val) const {return m_CompExact == val.m_CompExact;}
+    __forceinline bool operator!=(const Q& val) const {return m_CompExact != val.m_CompExact;}
+    __forceinline bool operator< (const Q& val) const {return m_CompExact <  val.m_CompExact;}
+    __forceinline bool operator<=(const Q& val) const {return m_CompExact <= val.m_CompExact;}
+    __forceinline bool operator> (const Q& val) const {return m_CompExact >  val.m_CompExact;}
+    __forceinline bool operator>=(const Q& val) const {return m_CompExact >= val.m_CompExact;}
 
 
     __forceinline FracType Frac() {return m_Frac;}
@@ -177,8 +231,16 @@ public:
             FracType m_Frac : NBits_Frac;
             MagnType m_Magn : NBits_Magn;
         };
-        MagnType m_Comp;
+        struct
+        {
+            MagnType m_CompExact: NBits;
+        };
+        MagnType m_CompFast;
     };
+
+#ifdef DEBUG_MODE
+    std::string debugStr;
+#endif //DEBUG_MODE
 
 private:
     union FloatFormat
@@ -198,7 +260,7 @@ Q<Magnitude, Fractional> sqrt(const Q<Magnitude, Fractional>& val)
 {
     //if (Magnitude < 0)
     //    return MAX_VAL
-    typename Q<Magnitude, Fractional>::MultiplyType temp = val.m_Comp << Fractional;
+    typename Q<Magnitude, Fractional>::MultiplyType temp = val.m_CompExact << Fractional;
     typename Q<Magnitude, Fractional>::InternalType root = 0, test;
     for (sint8_t i= Q<Magnitude, Fractional>::NBits - 1; i >= 0; i--)
     {
