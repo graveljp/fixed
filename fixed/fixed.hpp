@@ -64,7 +64,6 @@ public:
     typedef Q<Magnitude, Fractional> this_type;
     typedef void op_type;
     
-
     typedef typename FixedInteger<NBits,   (Magnitude < 0)>::type MagnType;
     typedef typename FixedInteger<NBits,   false>::type           FracType;
     typedef typename FixedInteger<NBits*2, (Magnitude < 0)>::type MultiplyType;
@@ -79,6 +78,10 @@ public:
         typedef Q<Magnitude + magnBoost, Fractional + fracBoost> type;
     };
 
+    static double epsilon()
+    {
+        return 1.0 / ((uint64_t)1 << Q::Fractional);
+    }
 
     __forceinline Q() :
         m_CompFast()
@@ -87,7 +90,8 @@ public:
         typeStr = "Q" + boost::lexical_cast<std::string>(Magnitude) + "," + boost::lexical_cast<std::string>(Fractional);
         valueStr = boost::lexical_cast<std::string>(m_Magn) + "," + boost::lexical_cast<std::string>(m_Frac);
         floatStr = boost::lexical_cast<std::string>((float)*this);
-        floatValue = (float)*this;
+        floatValue = (double)*this;
+        cumulativeEpsilon = 0;
 #endif //FIXED_DEBUG_MODE
     }
 
@@ -97,6 +101,7 @@ public:
           valueStr(val.valueStr),
           floatStr(val.floatStr),
           floatValue(val.floatValue),
+          cumulativeEpsilon(val.cumulativeEpsilon ),
 #endif //FIXED_DEBUG_MODE
           m_CompFast(val.m_CompFast & BitMask<NBits>::value )
     {
@@ -111,7 +116,8 @@ public:
         typeStr = "Q" + boost::lexical_cast<std::string>(Magnitude) + "," + boost::lexical_cast<std::string>(Fractional) + "";
         valueStr = boost::lexical_cast<std::string>(m_Magn) + "," + boost::lexical_cast<std::string>(m_Frac);
         floatStr = boost::lexical_cast<std::string>((float)*this);
-        floatValue = (float)*this;
+        floatValue = (double)*this;
+        cumulativeEpsilon = 0;
 #endif //FIXED_DEBUG_MODE
     }
 
@@ -132,7 +138,8 @@ public:
         typeStr = "Q" + boost::lexical_cast<std::string>(Magnitude) + "," + boost::lexical_cast<std::string>(Fractional) + "";
         valueStr = boost::lexical_cast<std::string>(m_Magn) + "," + boost::lexical_cast<std::string>(m_Frac);
         floatStr = boost::lexical_cast<std::string>((float)*this);
-        floatValue = (float)*this;
+        floatValue = (double)*this;
+        cumulativeEpsilon = fabs((double)*this - floatValue);
 #endif //FIXED_DEBUG_MODE
     }
     
@@ -146,6 +153,7 @@ public:
         valueStr = boost::lexical_cast<std::string>(m_Magn) + "," + boost::lexical_cast<std::string>(m_Frac);
         floatStr = boost::lexical_cast<std::string>((float)*this);
         floatValue = val;
+        cumulativeEpsilon = fabs((double)*this - floatValue);
 #endif //FIXED_DEBUG_MODE
     }
 
@@ -167,6 +175,7 @@ public:
         valueStr = "(" + val.valueStr + " << " + boost::lexical_cast<std::string>(shift) + " [" + boost::lexical_cast<std::string>(m_Magn) + "," + boost::lexical_cast<std::string>(m_Frac) + "] )";
         floatStr = "(" + val.floatStr + " << " + boost::lexical_cast<std::string>(shift) + " [" + boost::lexical_cast<std::string>((float)*this) + "] )";
         floatValue = val.floatValue;
+        cumulativeEpsilon = val.cumulativeEpsilon;
 #endif //FIXED_DEBUG_MODE
         return *this;
     }
@@ -184,6 +193,7 @@ public:
         valueStr = "(" + val.valueStr + " >> " + boost::lexical_cast<std::string>(shift) + " [" + boost::lexical_cast<std::string>(m_Magn) + "," + boost::lexical_cast<std::string>(m_Frac) + "] )";
         floatStr = "(" + val.floatStr + " >> " + boost::lexical_cast<std::string>(shift) + " [" + boost::lexical_cast<std::string>((float)*this) + "] )";
         floatValue = val.floatValue;
+        cumulativeEpsilon = val.cumulativeEpsilon + epsilon();
 #endif //FIXED_DEBUG_MODE
         return *this;
     }
@@ -193,18 +203,27 @@ public:
     __forceinline Q& operator=(const QXpr<E>& roRight);
 
 
-
-    template<typename t>
-    __forceinline operator t() const
+    template<typename T>
+    __forceinline typename boost::enable_if<boost::is_integral<T>, T>::type
+        cast() const
     {
-        return static_cast<t>(m_Magn);
+        return static_cast<T>(m_Magn);
     }
 
-    __forceinline operator float() const
+    template<typename T>
+    __forceinline typename boost::enable_if<boost::is_float<T>, T>::type
+        cast() const
+    {
+        T result = static_cast<T>(m_CompExact);
+        ((FloatFormat<T>*)&result)->exponent -= Fractional;
+        return (0 == m_CompExact) ? (T)0.0 : result;
+    }
+
+    template<typename T>
+    __forceinline operator T() const
     {   
-        float result = static_cast<float>(m_CompExact);
-        ((FloatFormat*)&result)->exponent -= Fractional;
-        return (0 == m_CompExact) ? 0.0f : result;
+        // enable_if is not possible on cast operators without C++0x support
+        return cast<T>();
     }
 
     template <sint8_t M, uint8_t F>
@@ -245,19 +264,42 @@ public:
     std::string typeStr;
     std::string valueStr;
     std::string floatStr;
-    float floatValue;
+    double floatValue;
+    double cumulativeEpsilon;
 #endif //FIXED_DEBUG_MODE
 
 private:
-    union FloatFormat
+    template<typename T>
+    struct FloatFormat;
+
+    template<>
+    struct FloatFormat<float>
     {
-        struct
+        union
         {
-            uint32_t mantissa : 23;
-            uint32_t exponent : 8;
-            uint32_t sign : 1;
+            struct
+            {
+                uint32_t mantissa : 23;
+                uint32_t exponent : 8;
+                uint32_t sign : 1;
+            };
+            uint32_t full;
         };
-        uint32_t full;
+    };
+
+    template<>
+    struct FloatFormat<double>
+    {
+        union
+        {
+            struct
+            {
+                uint64_t mantissa : 52;
+                uint64_t exponent : 11;
+                uint64_t sign : 1;
+            };
+            uint64_t full;
+        };
     };
 };
 

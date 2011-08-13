@@ -72,7 +72,7 @@ public:
         typedef typename boost::is_same<typename E2::op_type, Op>::type e2_compatible;
         enum { value = (e1_compatible::value||E1::template order<Op>::value==1)&&(e2_compatible::value||E2::template order<Op>::value==1) ? E1::template order<Op>::value+E2::template order<Op>::value : 2 };
     };
-    
+
     __forceinline explicit BinXpr(const E1& roLeft, const E2& roRight) :
         m_roLeft(roLeft),
         m_roRight(roRight)
