@@ -9,9 +9,12 @@
 #include <boost/static_assert.hpp>
 
 template<typename E>
-struct QXpr
+class QXpr
 {
+public:
     typedef E expression_type;
+    typedef E result_type;
+
 
     __forceinline expression_type& operator()()
     {
@@ -20,6 +23,30 @@ struct QXpr
     __forceinline const expression_type& operator()() const
     {
         return *static_cast<const expression_type*>(this);
+    }
+
+    template<typename T>
+    struct order
+    {
+        enum { value = 1 };
+    };
+
+    template< typename dest_type, int precisionBoost >
+    struct AdjustedTypes
+    {
+        typedef result_type Result;
+    };
+
+    template<typename dest_type>
+    __forceinline const result_type& value() const
+    {
+        return *static_cast<const E*>(this);
+    }
+
+    template<typename dest_type, int precisionBoost>
+    __forceinline const result_type& promotedValue() const
+    {
+        return *static_cast<const E*>(this);
     }
 };
 
@@ -125,34 +152,33 @@ public:
           BOOST_STATIC_ASSERT(ResultNBits::Total <= maxSize);
         };
 
-
-    public:
-        typedef dest_type DestType;
-
         typedef typename boost::mpl::if_c< fullResultSize <= maxSize, FullTypes, BoostedTypes >::type SelectedTypes;
 
+    public:
         typedef typename SelectedTypes::Left Left;
         typedef typename SelectedTypes::Right Right;
         typedef typename Op::result<Left, Right>::type Result;
         enum { adjustedTypes = SelectedTypes::adjustedTypes};
     };
 
-    template<typename AdjType>
+    template<typename DestType>
     class PromoteResult
     {
     private:
-        enum { concervativeNBits = AdjType::SelectedTypes::ResultNBits::Total };
+        typedef AdjustedTypes<DestType, 0> baseTypes;
+        enum { baseNBits = baseTypes::Result::NBits };
 
     public:
-        enum { precisionBoost = IntegerSizePolicy<Tag>::maxIntegerSize - concervativeNBits };
-        typedef typename AdjType::DestType::AdjustType<precisionBoost>::type type;
+        enum { precisionBoost = IntegerSizePolicy<Tag>::maxIntegerSize - baseNBits };
+        typedef typename AdjustedTypes<DestType, precisionBoost >::Result type;
     };
 
+
     template<typename DestType>
-    __forceinline typename AdjustedTypes<DestType, PromoteResult<AdjustedTypes<DestType,0> >::precisionBoost >::Result
+    __forceinline typename PromoteResult<DestType>::type
     value() const
     {
-        return promotedValue<DestType, PromoteResult<AdjustedTypes<DestType,0> >::precisionBoost>();
+        return promotedValue<DestType, PromoteResult<DestType>::precisionBoost>();
     }
 
     template<typename DestType, int precisionBoost>
@@ -164,8 +190,8 @@ public:
         typedef Adjusted::Right RightType;
         enum { nextPrecisionBoost = Adjusted::adjustedTypes ? 0 : precisionBoost };
 
-        return Op::apply( (LeftType)  m_roLeft.promotedValue<DestType, nextPrecisionBoost>(),
-                          (RightType) m_roRight.promotedValue<DestType, nextPrecisionBoost>() );
+        return Op::apply( (const LeftType)  m_roLeft.promotedValue<DestType, nextPrecisionBoost>(),
+                          (const RightType) m_roRight.promotedValue<DestType, nextPrecisionBoost>() );
     }
 
 private:
