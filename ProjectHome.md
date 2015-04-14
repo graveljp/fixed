@@ -1,0 +1,6 @@
+Fixed-point computing has several uses in general and embedded computing. For general computing, it enables fractional numbers of higher precision than float or double formats, because the size of the mantissa can be chosen up to 64-bit (or higher if the architecture permits it). In the embedded and real-time DSP world, floating-point hardware is not always available.
+
+fixed is made of several distinct components :
+a) A header-only C++ library providing a complete new 'Q' type to replace floating point types in existing code. The exact amount of bits to reserve for the integer (or 'magnitude') and fractional portions of the number are specified as template arguments.
+b) Standard C/C++ math functions rewritten to work on the fixed type, i.e. functions normally found in the cmath header.
+c) A set of tools (still TBD) to ease the transition of existing code to fixed-point format. fixed-point algorithms are notoriously difficult to develop and optimize, so tools to analyze the dynamic range and debug overflowing would be welcome.
